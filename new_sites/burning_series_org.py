@@ -4,11 +4,12 @@ from resources.lib.site_plugin import SitePlugin
 
 from resources.lib.handler.requestHandler import cRequestHandler
 from resources.lib import logger
+from resources.lib.local_storage import LocalStorage
 
 from resources.lib.bs_finalizer import *
 
 
-class BurningSeriesPlugin(SitePlugin):
+class BurningSeriesPlugin(SitePlugin, LocalStorage):
     site_identifier = 'burning_series_org'
     site_name = 'BurningSeries'
 
@@ -17,6 +18,9 @@ class BurningSeriesPlugin(SitePlugin):
 
     def load(self):
         logger.info("Load %s" % self.site_name)
+
+        self.set_data('testvalue', 'some kind of object')
+
         self.gui.addFolder(self._create_gui_element('Alle Serien', 'show_series'))
         self.gui.addFolder(self._create_gui_element('A-Z', 'showCharacters'))
         self.gui.addFolder(self._create_gui_element('Zufall', 'showRandom'))
@@ -24,6 +28,7 @@ class BurningSeriesPlugin(SitePlugin):
         self.gui.setEndOfDirectory()
 
     def show_series(self):
+        logger.info('Test data: %s' % self.get_data('testvalue'))
         filter_char = self.params.getValue('char')
         if filter_char: filter_char = filter_char.lower()
         series = self._getJsonContent("series")

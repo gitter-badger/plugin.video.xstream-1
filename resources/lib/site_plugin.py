@@ -10,6 +10,7 @@ class SitePlugin(object):
     site_icon = None
 
     def __init__(self):
+        super(SitePlugin, self).__init__()
         self.params = ParameterHandler()
         self.gui = cGui()
 
