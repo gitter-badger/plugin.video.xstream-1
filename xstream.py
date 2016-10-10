@@ -1,5 +1,6 @@
 ﻿# -*- coding: utf-8 -*-
 from resources.lib.handler.pluginHandler import cPluginHandler
+from resources.lib.handler.plugin_handler import PluginHandler
 from resources.lib.handler.ParameterHandler import ParameterHandler
 from resources.lib.gui.gui import cGui
 from resources.lib.gui.guiElement import cGuiElement
@@ -193,18 +194,23 @@ def parseUrl():
         oGui.setEndOfDirectory()
     else:
         # Else load any other site as plugin and run the function
-        plugin = __import__(sSiteName, globals(), locals())
-        function = getattr(plugin, sFunction)
-        function()
+        plugin = PluginHandler().get_plugin(sSiteName)
+        if plugin:
+            function = plugin.get_func(sFunction)
+            if function:
+                function()
+            else:
+                logger.info('Function not found: %s.%s' % (sSiteName, sFunction))
+        else:
+            logger.info('Plugin not found: %s' % sSiteName)
 
 def showMainMenu(sFunction):
     oGui = cGui()
     
     if cConfig().getSetting('GlobalSearchPosition') == 'true':
         oGui.addFolder(globalSearchGuiElement())
-        
-    oPluginHandler = cPluginHandler()
-    aPlugins = oPluginHandler.getAvailablePlugins()
+
+    aPlugins = PluginHandler().get_plugins()
     if not aPlugins:
         logger.info("No (activated) Plugins found")
         # Open the settings dialog to choose a plugin that could be enabled
@@ -212,25 +218,17 @@ def showMainMenu(sFunction):
         oGui.updateDirectory()
     else:
         # Create a gui element for every plugin found
-        for aPlugin in sorted(aPlugins, key=lambda k: k['id']):
+        for aPlugin in sorted(aPlugins, key=lambda k: k.site_name):
             oGuiElement = cGuiElement()
-            oGuiElement.setTitle(aPlugin['name'])
-            oGuiElement.setSiteName(aPlugin['id'])
+            oGuiElement.setTitle(aPlugin.site_name)
+            oGuiElement.setSiteName(aPlugin.site_identifier)
             oGuiElement.setFunction(sFunction)
-            if 'icon' in aPlugin and aPlugin['icon']:
-                oGuiElement.setThumbnail(aPlugin['icon'])
+            if aPlugin.site_icon:
+                oGuiElement.setThumbnail(aPlugin.site_icon)
             oGui.addFolder(oGuiElement)
 
         if cConfig().getSetting('GlobalSearchPosition') == 'false':
             oGui.addFolder(globalSearchGuiElement())
-
-        # Create a gui element for favorites
-        #oGuiElement = cGuiElement()
-        #oGuiElement.setTitle("Favorites")
-        #oGuiElement.setSiteName("FavGui")
-        #oGuiElement.setFunction("showFavs")
-        #oGuiElement.setThumbnail("DefaultAddonService.png")
-        #oGui.addFolder(oGuiElement)
 
     if cConfig().getSetting('SettingsFolder') == 'true':
         # Create a gui element for Settingsfolder
@@ -306,8 +304,7 @@ def searchGlobal():
     oGui._collectMode = True
     sSearchText = oGui.showKeyBoard()
     if not sSearchText: return True
-    aPlugins = []
-    aPlugins = cPluginHandler().getAvailablePlugins()
+    aPlugins = PluginHandler().get_plugins()
     dialog = xbmcgui.DialogProgress()
     dialog.create('xStream',"Searching...")
     numPlugins = len(aPlugins)
@@ -315,7 +312,7 @@ def searchGlobal():
     for count, pluginEntry in enumerate(aPlugins):
         dialog.update((count+1)*50/numPlugins,'Searching: '+str(pluginEntry['name'])+'...')
         logger.info('Searching for %s at %s' % (sSearchText.decode('utf-8'), pluginEntry['id']))
-        t = threading.Thread(target=_pluginSearch, args=(pluginEntry,sSearchText,oGui), name =pluginEntry['name'])
+        t = threading.Thread(target=_plugin_search, args=(pluginEntry,sSearchText,oGui), name =pluginEntry['name'])
         threads += [t]
         t.start()
     for count, t in enumerate(threads):
@@ -343,16 +340,15 @@ def searchAlter(params):
     oGui = cGui()
     oGui.globalSearch = True
     oGui._collectMode = True
-    aPlugins = []
-    aPlugins = cPluginHandler().getAvailablePlugins()
+    aPlugins = PluginHandler().get_plugins()
     dialog = xbmcgui.DialogProgress()
     dialog.create('xStream',"Searching...")
     numPlugins = len(aPlugins)
     threads = []
     for count, pluginEntry in enumerate(aPlugins):
-        dialog.update((count+1)*50/numPlugins,'Searching: '+str(pluginEntry['name'])+'...')
-        logger.info('Searching for ' + searchTitle + pluginEntry['id'].encode('utf-8'))
-        t = threading.Thread(target=_pluginSearch, args=(pluginEntry,searchTitle, oGui), name =pluginEntry['name'])
+        dialog.update((count+1)*50/numPlugins,'Searching: '+str(pluginEntry.site_name)+'...')
+        logger.info('Searching for ' + searchTitle + pluginEntry.site_identifier.encode('utf-8'))
+        t = threading.Thread(target=_plugin_search, args=(pluginEntry,searchTitle, oGui), name=pluginEntry.site_name)
         threads += [t]
         t.start()
     for count, t in enumerate(threads):
@@ -379,12 +375,10 @@ def searchAlter(params):
     xbmc.executebuiltin('Container.Update')
     return True
 
-def _pluginSearch(pluginEntry, sSearchText, oGui):
-    try:
-        plugin = __import__(pluginEntry['id'], globals(), locals())
-        function = getattr(plugin, '_search')
-        function(oGui, sSearchText)
-    except:
-        logger.info(pluginEntry['name']+': search failed')
-        import traceback
-        print traceback.format_exc()
+def _plugin_search(plugin, search_term, gui):
+    func = plugin.get_func('_search')
+
+    if func:
+        func(gui, search_term)
+    else:
+        logger.info(plugin.site_name + ': search failed')
