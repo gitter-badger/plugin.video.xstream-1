@@ -17,8 +17,7 @@ class CacheHelper(object):
     def _set_cache_path(self, cache_path=None):
         self._cache_path = None
         if not cache_path:
-            profile_path = common.profilePath
-            cache_path = os.path.join(profile_path, 'htmlcache')
+            cache_path = common.CACHE_PATH
         if not os.path.exists(cache_path):
             os.makedirs(cache_path)
         self._cache_path = cache_path

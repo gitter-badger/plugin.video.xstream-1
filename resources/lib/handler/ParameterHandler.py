@@ -1,9 +1,10 @@
+# -*- coding: utf-8 -*-
 import urllib
 import sys
 import urlparse
 
-class ParameterHandler:
 
+class ParameterHandler:
     def __init__(self):          
         params = dict()
         if len(sys.argv)>=3 and len(sys.argv[2])>0:
@@ -11,45 +12,40 @@ class ParameterHandler:
         self.__params = params
 
     def getAllParameters(self):
-        '''
+        """
         returns all parameters as dictionary
-        '''
+        """
         return self.__params
 
     def getValue(self, paramName):
-        '''
+        """
         returns value of one parameter as string, if parameter does not exists "False" is returned
-        '''
+        """
         if (self.exist(paramName)):
             return self.__params[paramName]
-            #paramValue = self.__params[paramName]                    
-            #return urllib.unquote_plus(paramValue)
         return False
 
     def exist(self, paramName):
-        '''
+        """
         checks if paramter with the name "paramName" exists
-        '''
+        """
         return paramName in self.__params
     
-    def setParam(self, paramName, paramValue):
-        '''
+    def setParam(self, key, value):
+        """
         set the value of the parameter with the name "paramName" to "paramValue"
         if there is no such parameter, the parameter is created
         if no value is given "paramValue" is set "None"
-        '''
-        paramValue = str(paramValue)
-        self.__params.update( {paramName : paramValue} )
-
+        """
+        self.__params.update( {key : str(value)} )
 
     def addParams(self, paramDict):
-        '''
+        """
         adds a whole dictionary {key1:value1,...,keyN:valueN} of parameters to the ParameterHandler
         existing parameters are updated
-        '''
+        """
         for key, value in paramDict.items():
-            self.__params.update( {key : str(value)} )
-
+            self.setParam(key, value)
 
     def getParameterAsUri(self):
         outParams = dict()
@@ -70,11 +66,10 @@ class ParameterHandler:
             del self.__params['site']
         except:
             pass
-        
+
         if len(self.__params) > 0:
             for param in self.__params:
                 if len(self.__params[param])<1:
-                    continue
-                outParams[param]=urllib.unquote_plus(self.__params[param])
+                    del self.__params[param]
             return urllib.urlencode(outParams)
         return 'params=0'

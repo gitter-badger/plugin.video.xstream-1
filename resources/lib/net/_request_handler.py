@@ -129,7 +129,6 @@ class RequestHandler(object):
 
         response = None
         try:
-            print 'DUrl: %s' % request.get_full_url()
             response = opener.open(request)
         except mechanize.HTTPError, e:
             if not self._ignore_errors:

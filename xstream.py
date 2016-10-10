@@ -310,9 +310,9 @@ def searchGlobal():
     numPlugins = len(aPlugins)
     threads = []
     for count, pluginEntry in enumerate(aPlugins):
-        dialog.update((count+1)*50/numPlugins,'Searching: '+str(pluginEntry['name'])+'...')
-        logger.info('Searching for %s at %s' % (sSearchText.decode('utf-8'), pluginEntry['id']))
-        t = threading.Thread(target=_plugin_search, args=(pluginEntry,sSearchText,oGui), name =pluginEntry['name'])
+        dialog.update((count+1)*50/numPlugins,'Searching: '+str(pluginEntry.site_name)+'...')
+        logger.info('Searching for %s at %s' % (sSearchText.decode('utf-8'), pluginEntry.site_identifier))
+        t = threading.Thread(target=_plugin_search, args=(pluginEntry,sSearchText,oGui), name =pluginEntry.site_name)
         threads += [t]
         t.start()
     for count, t in enumerate(threads):
@@ -379,6 +379,6 @@ def _plugin_search(plugin, search_term, gui):
     func = plugin.get_func('_search')
 
     if func:
-        func(gui, search_term)
+        func(search_term, gui)
     else:
         logger.info(plugin.site_name + ': search failed')

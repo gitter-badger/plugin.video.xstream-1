@@ -15,11 +15,10 @@ class LocalStorage(object):
     def _get_file_name(self):
         class_name = type(self).__name__
 
-        local_storage_path = os.path.join(common.profilePath, 'local_storage')
-        if not os.path.exists(local_storage_path):
-            os.makedirs(local_storage_path)
+        if not os.path.exists(common.LOCAL_STORAGE_PATH):
+            os.makedirs(common.LOCAL_STORAGE_PATH)
 
-        return os.path.join(local_storage_path, class_name)
+        return os.path.join(common.LOCAL_STORAGE_PATH, class_name)
 
     def _load(self):
         if os.path.exists(self._local_storage_file):
@@ -40,3 +39,6 @@ class LocalStorage(object):
     def del_data(self, key):
         if self._data and key in self._data:
             del self._data[key]
+
+    def clear(self):
+        self._data = {}
