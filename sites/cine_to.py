@@ -5,6 +5,9 @@ from resources.lib.handler.requestHandler import cRequestHandler
 from resources.lib.parser import cParser
 from resources.lib import logger
 from resources.lib.handler.ParameterHandler import ParameterHandler
+from resources.lib.util import cUtil
+from resources.lib.config import cConfig
+import ast
 
 import re, json
 from datetime import datetime
@@ -33,14 +36,14 @@ def load():
 def showMovieMenu():
     sHtmlContent = cRequestHandler(URL_MAIN).request()
     pattern = '<input[^>]*name="kind"[^>]*value="(.*?)"[^>]*>' # kind
-    aResult = cParser().parse(sHtmlContent, pattern)
+    isMatch, aResult = cParser().parse(sHtmlContent, pattern)
 
-    if not aResult[0]:
+    if not isMatch:
         return
 
     oGui = cGui()
     params = ParameterHandler()
-    for sKind in aResult[1]:
+    for sKind in aResult:
         params.setParam('kind', sKind)
         oGui.addFolder(cGuiElement(sKind.title(), SITE_IDENTIFIER, 'searchRequest'), params)
     oGui.addFolder(cGuiElement('Genre', SITE_IDENTIFIER, 'showGenresMenu'))
@@ -51,20 +54,20 @@ def showMovieMenu():
 def showGenresMenu():
     sHtmlContent = cRequestHandler(URL_MAIN).request()
     pattern = '<ul[^>]*id="genres"[^>]*>(.*?)</ul>' # genre-ul
-    aResult = cParser().parse(sHtmlContent, pattern)
+    isMatch, sContainer = cParser().parseSingleResult(sHtmlContent, pattern)
 
-    if not aResult[0]:
+    if not isMatch:
         return
 
     pattern = '<a[^>]*data-id="(\d+)"[^>]*href="[^"]*"[^>]*>([^<]*)<s' # id / title
-    aResult = cParser().parse(aResult[1][0], pattern)
+    isMatch, aResult = cParser().parse(sContainer, pattern)
 
-    if not aResult[0]:
+    if not isMatch:
         return
 
     oGui = cGui()
     params = ParameterHandler()
-    for sGenreId, sTitle in aResult[1]:
+    for sGenreId, sTitle in aResult:
         params.setParam('genre', sGenreId)
         oGui.addFolder(cGuiElement(sTitle.strip(), SITE_IDENTIFIER, 'searchRequest'), params)
     oGui.setEndOfDirectory()
@@ -76,8 +79,9 @@ def searchRequest(dictFilter = False, sGui = False):
     dictFilter = {}
     for (prop, val) in SEARCH_DICT.items():
         parmVal = params.getValue(prop)
+        parmVal = ast.literal_eval(parmVal) if prop == 'year[]' and parmVal else parmVal # yes a bit ugly
         dictFilter[prop] = parmVal if parmVal else val
-        params.setParam(prop, val)
+        params.setParam(prop, dictFilter[prop])
 
     oResponse = _getJSonResponse(URL_SEARCH, dictFilter)
 
@@ -85,9 +89,15 @@ def searchRequest(dictFilter = False, sGui = False):
         if not sGui: oGui.showInfo('xStream','Es wurde kein Eintrag gefunden')
         return
 
+    sLanguage = _getPrefLanguage()
+
     total = len (oResponse['entries'])
     for aEntry in oResponse['entries']:
         aLang = re.compile('(\w+)-').findall(aEntry['language'])
+        if sLanguage and sLanguage not in aLang:
+            continue
+        elif sLanguage:
+            aLang = [sLanguage]
         oGuiElement = cGuiElement()
         oGuiElement.setSiteName(SITE_IDENTIFIER)
         oGuiElement.setFunction('showHosters')
@@ -101,7 +111,7 @@ def searchRequest(dictFilter = False, sGui = False):
         oOutParms = ParameterHandler()
         oOutParms.setParam('itemID', aEntry['imdb'])
         oOutParms.setParam('lang', aEntry['language'])
-        oGui.addFolder(oGuiElement, oOutParms, False, total)
+        oGui.addFolder(oGuiElement, oOutParms, False, total, True)
 
     if int(oResponse['current']) < int(oResponse['pages']):
         params.setParam('page', int(oResponse['current']) + 1)
@@ -117,8 +127,13 @@ def showHosters():
     lang = params.getValue('lang')
     if not imdbID or not lang: return
 
+    sLanguage = _getPrefLanguage()
+
     hosters = []
     for sLang in re.compile('(\w+)-').findall(lang):
+        if sLanguage and sLanguage != sLang:
+            continue
+
         oResponse = _getJSonResponse(URL_LINKS, {'ID':imdbID,'lang':sLang} )
         if 'links' not in oResponse or len(oResponse['links']) == 0:
             return
@@ -129,7 +144,7 @@ def showHosters():
                 hoster['quality'] = QUALITY_ENUM[oResponse['links'][aEntry][0]]
             hoster['link'] = URL_OUT % oResponse['links'][aEntry][1]
             hoster['name'] = aEntry
-            hoster['displayedName'] = '%s (%s) - Quality: %s' % (aEntry, sLang, oResponse['links'][aEntry][0])
+            hoster['displayedName'] = '%s (%s) - Quality: %s' % (aEntry.title(), sLang, oResponse['links'][aEntry][0])
             hosters.append(hoster)
 
     if hosters:
@@ -172,6 +187,15 @@ def _search(oGui, sSearchText):
     dictSearch['term'] = sSearchText.strip()
     searchRequest(dictSearch, oGui)
 
+def _getPrefLanguage():
+    sLanguage = cConfig().getSetting('prefLanguage')
+    if sLanguage == '0':
+        sLanguage = 'de'
+    elif sLanguage == '1':
+        sLanguage = 'en'
+    else:
+        sLanguage = False
+    return sLanguage
 
 def showYearSearch():
     oGui = cGui()
@@ -179,12 +203,12 @@ def showYearSearch():
     beginYear = correctWrongYearEntry(oGui.showNumpad(defaultNum=1913, numPadTitle="Begin Year"))
     endYear = correctWrongYearEntry(oGui.showNumpad(defaultNum=datetime.now().year, numPadTitle="End Year"))
     dictSearch['year[]'] = [beginYear, endYear]
-    searchRequest(dictSearch, oGui)
+    searchRequest(dictSearch, False)
     oGui.setEndOfDirectory()
 
 
 def correctWrongYearEntry(year):
-    if int(year) < 1913:
+    if year == '' or int(year) < 1913:
         year = "1913"
     elif int(year) > datetime.now().year:
         year = datetime.now().year
@@ -200,5 +224,5 @@ def showRatingSearch():
     elif int(minRating) < 1:
         minRating = "1"
     dictSearch['rating'] = minRating
-    searchRequest(dictSearch, oGui)
+    searchRequest(dictSearch, False)
     oGui.setEndOfDirectory()

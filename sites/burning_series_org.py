@@ -92,7 +92,11 @@ def showSearch():
 def _getJsonContent(urlPart):
     request = cRequestHandler(URL_MAIN + urlPart)
     mod_request(request, urlPart)
-    return json.loads(request.request())
+    content = request.request()
+    if content:
+        return json.loads(content)
+    else:
+        return []
 
 # Search for series using the requested string sSearchText
 def _search(oGui, sSearchText):

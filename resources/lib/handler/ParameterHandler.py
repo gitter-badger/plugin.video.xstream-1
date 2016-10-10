@@ -1,14 +1,13 @@
 import urllib
 import sys
+import urlparse
 
 class ParameterHandler:
-	
+
     def __init__(self):          
         params = dict()
-        if len(sys.argv)>=3 and len(sys.argv[2])>0:               
-            params = dict(part.split('=') for part in sys.argv[ 2 ][ 1: ].split('&')) 
-        for param in params:
-            params[param]=urllib.unquote_plus(params[param])
+        if len(sys.argv)>=3 and len(sys.argv[2])>0:
+            params = dict(urlparse.parse_qsl(urlparse.urlsplit(sys.argv[2]).query))
         self.__params = params
 
     def getAllParameters(self):

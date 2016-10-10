@@ -197,25 +197,26 @@ def showHosters():
     isMatch, aResult = parser.parse(sHtmlContent, '<option[^>]*quality[^>]*id="(\w+)"[^>]*class="mirrorbuttons\w+"[^>]*>(.*?)</option>')  # filter main content if needed
 
     hosters = []
-    
+
     if not isMatch:
         return hosters
 
     for sID, sQulitTitle in aResult:
-        sPattern = '<div[^>]*class="mirrors\w+"[^>]*id="%s">(.*?)<div[^>]*id="' % sID
-        isMatchMirrors, sMirrorContainer = parser.parseSingleResult(sHtmlContent, sPattern)
+        sPattern = '<div[^>]*class="mirrors\w+"[^>]*id="%s">(.*?)</div></div>' % sID
+        isMatchMirrors, sMirrorContainer = parser.parse(sHtmlContent, sPattern)
 
         if not isMatchMirrors:
             continue
 
-        isMatchUrls, aResultMirrors = parser.parse(sMirrorContainer, '<a[^>]*href="([^"]+)"[^>]*>.*?name="save"[^>]*value="(.*?)"[^>]*/>')
+        isMatchUrls, aResultMirrors = parser.parse(sMirrorContainer[0], '<a[^>]*href="([^"]+)"[^>]*>.*?name="save"[^>]*value="(.*?)"[^>]*/>')
 
         if not isMatchUrls:
             continue
 
         for sUrl, sName in aResultMirrors:
             hoster = {}
-            hoster['name'] = '[%s] %s' % (sQulitTitle, sName.strip())
+            hoster['name'] = sName.strip()
+            hoster['displayedName'] = '[%s] %s' % (sQulitTitle, sName.strip())
             hoster['link'] = sUrl
             hosters.append(hoster)
 

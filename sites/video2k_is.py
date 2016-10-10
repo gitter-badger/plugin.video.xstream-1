@@ -10,7 +10,7 @@ import re
 
 SITE_IDENTIFIER = 'video2k_is'
 SITE_NAME = 'Video2k'
-SITE_ICON = 'Video2k.png'
+SITE_ICON = 'video2k.png'
 
 URL_MAIN = 'http://www.video2k.is/'
 URL_MOVIE = URL_MAIN + '?c=movie&m=filter&order_by=%s'

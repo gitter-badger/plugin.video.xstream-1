@@ -115,7 +115,7 @@ def _search(oGui, sSearchText):
 def showGenresMenu():
     logger.info('load displayGenreSite')
     oParams = ParameterHandler()
-    sPattern = '<a href="' + URL_GENRE + '(.*?).html".*?>(.*?)</a>'
+    sPattern = '<li><a href="' + URL_GENRE + '(.*?).html".*?>(.*?)</a></li>'
 
     # request
     sHtmlContent = __getHtmlContent(URL_MAIN)
